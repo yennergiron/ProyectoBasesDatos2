@@ -4,12 +4,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Collections;
 
 import javax.sql.DataSource;
 
@@ -17,8 +23,11 @@ import javax.sql.DataSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private DataSource dataSource;
+    private final DataSource dataSource;
+
+    public SecurityConfig(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -34,38 +43,6 @@ public class SecurityConfig {
                 .permitAll()
             )
             .logout(logout -> logout
-                .permitAll()
-            );
-        return http.build();
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        return new MariaDBAuthenticationProvider(dataSource);
-    }
-    /*@Autowired
-    private DataSource dataSource; // MariaDB datasource
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // Secure password encoder
-    }
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/", "/login", "/Login", "/css/**").permitAll() // Allow CSS files
-            .anyRequest().authenticated()
-            )
-            .formLogin(form -> form
-                .loginPage("/login")
-                .loginProcessingUrl("/login")
-                .defaultSuccessUrl("/dashboard", true)
-                .failureUrl("/login?error=Invalid credentials")
-                .permitAll()
-            )
-            .logout(logout -> logout
                 .logoutSuccessUrl("/login?logout")
                 .permitAll()
             );
@@ -73,24 +50,30 @@ public class SecurityConfig {
     }
 
     @Bean
-    public DatabaseUserDetailsService databaseUserDetailsService(DataSource dataSource) {
-        return new DatabaseUserDetailsService(dataSource);
-    }
+    public AuthenticationProvider authenticationProvider() {
+    return new AuthenticationProvider() {
+        @Override
+        public Authentication authenticate(Authentication auth) throws AuthenticationException {
+            String username = auth.getName();
+            String password = auth.getCredentials().toString();
+            
+            try (Connection conn = DriverManager.getConnection(
+                "jdbc:mariadb://172.17.0.2:3306/mysql",
+                username,
+                password)) {
+                
+                return new UsernamePasswordAuthenticationToken(
+                    username, password, Collections.emptyList());
+                    
+            } catch (SQLException e) {
+                throw new BadCredentialsException("Invalid credentials");
+            }
+        }
 
-    @Bean
-    public AuthenticationProvider authenticationProvider(DatabaseUserDetailsService userDetailsService) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService); // Use constructor
-        provider.setPasswordEncoder(new BCryptPasswordEncoder());
-        return provider;
-    }
-     
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return new CustomUserDetailsService(); // We'll create this next
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }*/
+        @Override
+        public boolean supports(Class<?> authentication) {
+            return true;
+        }
+    };
+}
 }

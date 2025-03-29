@@ -2,20 +2,18 @@ package com.sbprodb2.sbdatabaseprojectjv;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-
 import javax.sql.DataSource;
-
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.util.Collections;
 
 public class MariaDBAuthenticationProvider implements AuthenticationProvider{
+    
     private final DataSource dataSource;
 
     public MariaDBAuthenticationProvider(DataSource dataSource) {
@@ -27,28 +25,35 @@ public class MariaDBAuthenticationProvider implements AuthenticationProvider{
         String username = auth.getName();
         String password = auth.getCredentials().toString();
 
-        try (Connection conn = DriverManager.getConnection(
-                dataSource.getConnection().getMetaData().getURL(),
-                username,
-                password)) {
-            
-            // Test connection with a simple query
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT 1");
-            if (rs.next()) {
-                return new UsernamePasswordAuthenticationToken(
-                    username, 
-                    password,
-                    AuthorityUtils.createAuthorityList("ROLE_USER"));
-            }
+        // Get base URL without credentials
+        String jdbcUrl;
+        try {
+            jdbcUrl = dataSource.getConnection().getMetaData().getURL();
         } catch (SQLException e) {
-            throw new BadCredentialsException("Invalid credentials");
+            throw new BadCredentialsException("Database configuration error");
         }
-        throw new BadCredentialsException("Authentication failed");
+
+        // Try to connect with user-supplied credentials
+        try (Connection conn = DriverManager.getConnection(jdbcUrl, username, password)) {
+            // Verify connection with a simple query
+            try (var stmt = conn.createStatement()) {
+                stmt.executeQuery("SELECT 1");
+            }
+            
+            return new UsernamePasswordAuthenticationToken(
+                username,
+                password,
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+                
+        } catch (SQLException e) {
+            // Provide detailed error message for debugging
+            throw new BadCredentialsException(
+                "MariaDB authentication failed: " + e.getMessage());
+        }
     }
 
     @Override
     public boolean supports(Class<?> authentication) {
-        return authentication.equals(UsernamePasswordAuthenticationToken.class);
+        return UsernamePasswordAuthenticationToken.class.isAssignableFrom(authentication);
     }
 }

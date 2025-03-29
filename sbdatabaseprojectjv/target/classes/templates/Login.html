@@ -44,7 +44,9 @@
         <div class="form-box">
             <h1 id="form-title">Database Login</h1>
             
-            <div th:if="${error}" class="error-message" th:text="${error}"></div>
+            <div th:if="${param.error}" class="error-message">
+                Authentication failed. Check server logs for details.
+            </div>
             
             <form th:action="@{/login}" method="post">
                 <div class="input-group">
