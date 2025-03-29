@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In / Sign Up</title>
+    <title>Database Login</title>
     <link rel="stylesheet" th:href="@{/css/StyleLogin.css}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
@@ -10,15 +10,44 @@
             display: flex;
             justify-content: center;
             gap: 20px;
+            margin-top: 20px;
+        }
+        .error-message {
+            color: #ff4444;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="form-box">
-            <h1 id="form-title">Sign Up</h1>
-            <form th:action="@{/login}" method="post"></form>
-                <div class="input-group" id="input-group">
+            <h1 id="form-title">Database Login</h1>
+            
+            <div th:if="${error}" class="error-message" th:text="${error}"></div>
+            
+            <form th:action="@{/login}" method="post">
+                <div class="input-group">
                     <div class="input-field">
                         <i class="fa-solid fa-user"></i>
                         <input type="text" name="username" placeholder="Username" required>
@@ -27,28 +56,98 @@
                         <i class="fa-solid fa-lock"></i>
                         <input type="password" name="password" placeholder="Password" required>
                     </div>
-                    <div class="input-field" id="confirm-password">
-                        <i class="fa-solid fa-lock"></i>
-                        <input type="password" placeholder="Confirme contrasena">
-                    </div>
+                    <button type="submit" class="submit-btn">Connect</button>
                 </div>
             </form>
-            <div class="btn-fields">
-                <button type="button" id="signUpBtn">Sign Up</button>
-                <button type="button" id="signInBtn">Sign In</button>
+        </div>
+    </div>
+
+    <!-- Database Connection Dashboard Modal -->
+    <div id="dbDashboard" class="modal">
+        <div class="modal-content">
+            <h2>Database Connection Dashboard</h2>
+            <div class="connection-info">
+                <p><strong>Connected to:</strong> <span id="db-host">localhost:3306</span></p>
+                <p><strong>User:</strong> <span id="db-user"></span></p>
+                <p><strong>Status:</strong> <span class="status-connected">Connected</span></p>
             </div>
+            
+            <div class="query-section">
+                <h3>SQL Query</h3>
+                <textarea id="sql-query" rows="4" placeholder="Enter your SQL query here..."></textarea>
+                <button id="execute-query">Execute</button>
+                <div id="query-results"></div>
+            </div>
+            
+            <button id="disconnect-btn">Disconnect</button>
         </div>
     </div>
 
     <script>
-        document.getElementById("signUpBtn").addEventListener("click", function() {
-            document.getElementById("form-title").innerText = "Sign Up";
-            document.getElementById("confirm-password").style.display = "flex";
+        // Check if login was successful (you'll need to set this from server-side)
+        if (window.location.search.includes('login_success=true')) {
+            document.getElementById('dbDashboard').style.display = 'block';
+            document.getElementById('db-user').textContent = 
+                new URLSearchParams(window.location.search).get('username');
+        }
+
+        document.getElementById('disconnect-btn').addEventListener('click', function() {
+            document.getElementById('dbDashboard').style.display = 'none';
+            window.location.href = '/login';
         });
-        
-        document.getElementById("signInBtn").addEventListener("click", function() {
-            document.getElementById("form-title").innerText = "Sign In";
-            document.getElementById("confirm-password").style.display = "none";
+
+        document.getElementById('execute-query').addEventListener('click', async function() {
+            const query = document.getElementById('sql-query').value;
+            const resultsDiv = document.getElementById('query-results');
+            
+            if (!query) {
+                resultsDiv.innerHTML = '<p class="error">Please enter a query</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/execute-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        username: document.getElementById('db-user').textContent
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsDiv.innerHTML = `<p class="error">Error: ${data.error}</p>`;
+                } else {
+                    // Format the results as a table
+                    let html = '<table><tr>';
+                    
+                    // Create headers
+                    if (data.results.length > 0) {
+                        Object.keys(data.results[0]).forEach(col => {
+                            html += `<th>${col}</th>`;
+                        });
+                        html += '</tr>';
+                        
+                        // Add rows
+                        data.results.forEach(row => {
+                            html += '<tr>';
+                            Object.values(row).forEach(val => {
+                                html += `<td>${val}</td>`;
+                            });
+                            html += '</tr>';
+                        });
+                    }
+                    
+                    html += '</table>';
+                    resultsDiv.innerHTML = html;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<p class="error">Connection error: ${err.message}</p>`;
+            }
         });
     </script>
 </body>

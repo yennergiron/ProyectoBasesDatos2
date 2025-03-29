@@ -1,4 +1,4 @@
-package com.sbprodb2.sbdatabaseprojectjv;
+/*package com.sbprodb2.sbdatabaseprojectjv;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.User;
@@ -29,4 +29,4 @@ public class CustomUserDetailsService implements UserDetailsService{
             Collections.emptyList()
         );
     }
-}
+}*/

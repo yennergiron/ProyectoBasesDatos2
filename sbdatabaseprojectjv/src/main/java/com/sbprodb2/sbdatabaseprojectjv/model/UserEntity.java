@@ -1,4 +1,4 @@
-package com.sbprodb2.sbdatabaseprojectjv.model;
+/*package com.sbprodb2.sbdatabaseprojectjv.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -24,3 +24,4 @@ public class UserEntity {
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
 }
+*/

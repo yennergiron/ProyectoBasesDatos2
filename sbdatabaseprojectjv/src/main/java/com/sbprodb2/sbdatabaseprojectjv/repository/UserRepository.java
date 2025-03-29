@@ -1,4 +1,4 @@
-package com.sbprodb2.sbdatabaseprojectjv.repository;
+/*package com.sbprodb2.sbdatabaseprojectjv.repository;
 
 import com.sbprodb2.sbdatabaseprojectjv.model.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,4 +13,4 @@ public interface UserRepository extends
     
     // Additional standard methods can be added here
     //boolean existsByEmail(String email); //needs to be removed
-}
+}*/
