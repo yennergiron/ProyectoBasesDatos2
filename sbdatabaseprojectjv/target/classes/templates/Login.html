@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In / Sign Up</title>
+    <link rel="stylesheet" th:href="@{/css/StyleLogin.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        .btn-fields {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-box">
+            <h1 id="form-title">Sign Up</h1>
+            <form th:action="@{/login}" method="post"></form>
+                <div class="input-group" id="input-group">
+                    <div class="input-field">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" name="username" placeholder="Username" required>
+                    </div>
+                    <div class="input-field">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" name="password" placeholder="Password" required>
+                    </div>
+                    <div class="input-field" id="confirm-password">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" placeholder="Confirme contrasena">
+                    </div>
+                </div>
+            </form>
+            <div class="btn-fields">
+                <button type="button" id="signUpBtn">Sign Up</button>
+                <button type="button" id="signInBtn">Sign In</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("signUpBtn").addEventListener("click", function() {
+            document.getElementById("form-title").innerText = "Sign Up";
+            document.getElementById("confirm-password").style.display = "flex";
+        });
+        
+        document.getElementById("signInBtn").addEventListener("click", function() {
+            document.getElementById("form-title").innerText = "Sign In";
+            document.getElementById("confirm-password").style.display = "none";
+        });
+    </script>
+</body>
+</html>
