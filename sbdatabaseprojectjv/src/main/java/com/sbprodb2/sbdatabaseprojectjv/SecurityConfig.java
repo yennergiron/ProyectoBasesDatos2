@@ -1,6 +1,6 @@
 package com.sbprodb2.sbdatabaseprojectjv;
 
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -58,7 +58,7 @@ public class SecurityConfig {
             String password = auth.getCredentials().toString();
             
             try (Connection conn = DriverManager.getConnection(
-                "jdbc:mariadb://172.17.0.2:3306/mysql",
+                "jdbc:mysql://192.168.0.9:3307/proyecto_bd",
                 username,
                 password)) {
                 
