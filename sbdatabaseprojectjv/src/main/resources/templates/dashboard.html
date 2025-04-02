@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Database Project</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" th:href="@{/css/StyleDashboard.css}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
@@ -28,38 +28,124 @@
 
     <div class="container mt-5">
         <div class="row">
-            <div class="col-md-8 mx-auto">
+            <div class="col-md-10 mx-auto">
                 <div class="card shadow">
-                    <div class="card-header bg-white">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">Dashboard</h4>
+                        <span th:if="${isAdmin}" class="badge bg-danger">Admin</span>
+                        <span th:unless="${isAdmin}" class="badge bg-primary">User</span>
                     </div>
                     <div class="card-body">
                         <div class="alert alert-success">
-                            You have successfully logged in!
+                            You have successfully logged in! 
+                            <span th:if="${isAdmin}">You have <strong>administrator</strong> privileges.</span>
+                            <span th:unless="${isAdmin}">You have <strong>standard user</strong> privileges.</span>
+                        </div>
+                        
+                        <!-- Database Selection -->
+                        <div class="mb-4">
+                            <h5>Select Database</h5>
+                            <select class="form-select" id="databaseSelect">
+                                <option value="">-- Select a database --</option>
+                                <option th:each="db : ${databases}" th:value="${db}" th:text="${db}"></option>
+                            </select>
                         </div>
                         
                         <div class="row mt-4">
-                            <div class="col-md-6 mb-4">
+                            <!-- Common Operations for All Users -->
+                            <div class="col-md-4 mb-4">
                                 <div class="card h-100">
                                     <div class="card-body text-center">
-                                        <i class="bi bi-database fs-1 text-primary"></i>
-                                        <h5 class="card-title mt-3">Database Management</h5>
-                                        <p class="card-text">Manage your database tables and records</p>
-                                        <a href="#" class="btn btn-primary">Go to Tables</a>
+                                        <i class="bi bi-table fs-1 text-primary"></i>
+                                        <h5 class="card-title mt-3">Tables</h5>
+                                        <p class="card-text">View and query tables</p>
+                                        <button class="btn btn-primary" onclick="showTables()">Show Tables</button>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="col-md-6 mb-4">
+                            <div class="col-md-4 mb-4">
                                 <div class="card h-100">
                                     <div class="card-body text-center">
-                                        <i class="bi bi-graph-up fs-1 text-success"></i>
-                                        <h5 class="card-title mt-3">Data Analytics</h5>
-                                        <p class="card-text">View reports and analytics</p>
-                                        <a href="#" class="btn btn-success">View Reports</a>
+                                        <i class="bi bi-search fs-1 text-info"></i>
+                                        <h5 class="card-title mt-3">Query Data</h5>
+                                        <p class="card-text">Run SELECT queries</p>
+                                        <button class="btn btn-info" onclick="runQuery()">Run Query</button>
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Admin Only Operations -->
+                            <div th:if="${isAdmin}" class="col-md-4 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-database-add fs-1 text-danger"></i>
+                                        <h5 class="card-title mt-3">Admin Tools</h5>
+                                        <p class="card-text">Database administration</p>
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-danger" onclick="manageUsers()">Manage Users</button>
+                                            <button class="btn btn-warning" onclick="createTable()">Create Table</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Regular User Operations -->
+                            <div th:unless="${isAdmin}" class="col-md-4 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-pencil-square fs-1 text-success"></i>
+                                        <h5 class="card-title mt-3">Data Modification</h5>
+                                        <p class="card-text">Insert/Update data</p>
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-success" onclick="insertData()">Insert Data</button>
+                                            <button class="btn btn-warning" onclick="updateData()">Update Data</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Query Results Section -->
+                        <div class="mt-4" id="queryResults" style="display: none;">
+                            <h5>Query Results</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped" id="resultsTable">
+                                    <thead></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div th:if="${isAdmin}" class="modal fade" id="adminModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Admin Tools</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" id="adminTabs">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#userManagement">User Management</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#tableManagement">Table Management</a>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content mt-3">
+                        <div class="tab-pane fade show active" id="userManagement">
+                            <!-- User management form -->
+                        </div>
+                        <div class="tab-pane fade" id="tableManagement">
+                            <!-- Table management form -->
                         </div>
                     </div>
                 </div>
@@ -75,5 +161,32 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <script>
+        function showTables() {
+            const db = document.getElementById('databaseSelect').value;
+            if (!db) {
+                alert('Please select a database first');
+                return;
+            }
+            // AJAX call to fetch tables would go here
+            console.log(`Showing tables for database: ${db}`);
+        }
+        
+        function runQuery() {
+            const query = prompt("Enter your SELECT query:");
+            if (query) {
+                // AJAX call to execute query would go here
+                console.log(`Executing query: ${query}`);
+            }
+        }
+        
+        function manageUsers() {
+            const adminModal = new bootstrap.Modal(document.getElementById('adminModal'));
+            adminModal.show();
+        }
+        
+        // Other functions would be implemented similarly
+    </script>
 </body>
 </html>
