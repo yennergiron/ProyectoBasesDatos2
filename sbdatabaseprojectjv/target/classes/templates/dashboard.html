@@ -169,24 +169,34 @@
                 alert('Please select a database first');
                 return;
             }
-            // AJAX call to fetch tables would go here
-            console.log(`Showing tables for database: ${db}`);
-        }
         
-        function runQuery() {
-            const query = prompt("Enter your SELECT query:");
-            if (query) {
-                // AJAX call to execute query would go here
-                console.log(`Executing query: ${query}`);
-            }
-        }
+            fetch(`/showTables?database=${db}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Tables:', data);
+                    const resultsTable = document.getElementById('resultsTable');
+                    const tbody = resultsTable.querySelector('tbody');
+                    tbody.innerHTML = '';
         
-        function manageUsers() {
-            const adminModal = new bootstrap.Modal(document.getElementById('adminModal'));
-            adminModal.show();
-        }
+                    data.forEach(table => {
+                        const row = document.createElement('tr');
+                        const cell = document.createElement('td');
+                        cell.textContent = table;
+                        row.appendChild(cell);
+                        tbody.appendChild(row);
+                    });
         
-        // Other functions would be implemented similarly
-    </script>
+                    document.getElementById('queryResults').style.display = 'block';
+                })
+                .catch(error => console.error('Error fetching tables:', error));
+        }
+        </script>
+        
+        
 </body>
 </html>
