@@ -65,6 +65,20 @@ public class ControllerDBP {
         }
     }
 
+    @GetMapping("/showTableData")
+    @ResponseBody
+    public TableData showTableData(@RequestParam("database") String database, @RequestParam("table") String table, Principal principal) throws SQLException {
+        String username = principal.getName();
+
+        try (Connection conn = dataSource.getConnection()) {
+            // Check if user has SUPER privilege
+            boolean isAdmin = checkSuperPrivilege(conn, username);
+
+            // Get top 200 records from the selected table
+            return getTableData(conn, database, table, username, isAdmin);
+        }
+    }
+
     private boolean checkSuperPrivilege(Connection conn, String username) throws SQLException {
         String sql = "SELECT Super_priv FROM mysql.user WHERE User = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -110,6 +124,45 @@ public class ControllerDBP {
             }
         }
         return tables;
+    }
+
+    private TableData getTableData(Connection conn, String database, String table, String username, boolean isAdmin) throws SQLException {
+        List<String> columns = new ArrayList<>();
+        List<List<Object>> rows = new ArrayList<>();
+        String sql = "SELECT * FROM " + database + "." + table + " LIMIT 200";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            int columnCount = rs.getMetaData().getColumnCount();
+            for (int i = 1; i <= columnCount; i++) {
+                columns.add(rs.getMetaData().getColumnName(i));
+            }
+            while (rs.next()) {
+                List<Object> row = new ArrayList<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    row.add(rs.getObject(i));
+                }
+                rows.add(row);
+            }
+        }
+        return new TableData(columns, rows);
+    }
+
+    public static class TableData {
+        private List<String> columns;
+        private List<List<Object>> rows;
+
+        public TableData(List<String> columns, List<List<Object>> rows) {
+            this.columns = columns;
+            this.rows = rows;
+        }
+
+        public List<String> getColumns() {
+            return columns;
+        }
+
+        public List<List<Object>> getRows() {
+            return rows;
+        }
     }
 
 }
