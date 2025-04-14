@@ -36,6 +36,7 @@ public class SecurityConfig {
                 .requestMatchers("/", "/login", "/css/**").permitAll()
                 .anyRequest().authenticated()
             )
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/runQuery")) // Disable CSRF for /runQuery
             .formLogin(form -> form
                 .loginPage("/login")
                 .defaultSuccessUrl("/dashboard", true)
@@ -58,7 +59,7 @@ public class SecurityConfig {
             String password = auth.getCredentials().toString();
             
             try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://192.168.0.9:3307/proyecto_bd",
+                "jdbc:mysql://localhost:3307/proyecto_bd",
                 username,
                 password)) {
                 

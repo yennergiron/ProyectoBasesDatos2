@@ -2,6 +2,8 @@ package com.sbprodb2.sbdatabaseprojectjv;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.ui.Model;
@@ -15,12 +17,18 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
 import javax.sql.DataSource;
 
 @Controller
 public class ControllerDBP {
 
+    private static final Logger logger = LoggerFactory.getLogger(ControllerDBP.class);
     private final DataSource dataSource;
+
     
     public ControllerDBP(DataSource dataSource) {
         this.dataSource = dataSource;
@@ -76,6 +84,36 @@ public class ControllerDBP {
 
             // Get top 200 records from the selected table
             return getTableData(conn, database, table, username, isAdmin);
+        }
+    }
+
+    
+    @PostMapping("/runQuery")
+    @ResponseBody
+    public TableData runQuery(@RequestBody QueryRequest queryRequest, Principal principal) {
+        String username = principal.getName();
+        String query = queryRequest.getQuery();
+        logger.info("User {} is executing query: {}", username, query);
+        if (query == null || query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Query cannot be null or empty");
+        }
+        
+        // Check if the query is safe to execute
+        if (query.toLowerCase().contains("drop") || query.toLowerCase().contains("delete") || query.toLowerCase().contains("update")) {
+            throw new IllegalArgumentException("Unsafe query detected");
+        }
+
+        // Validate the query to prevent SQL injection
+        if (!query.toLowerCase().startsWith("select")) {
+            throw new IllegalArgumentException("Only SELECT queries are allowed");
+        }
+        
+        try (Connection conn = dataSource.getConnection()) {
+            // Execute the custom query
+            return executeQuery(conn, query);
+        } catch (SQLException e) {
+            logger.error("Error executing query for user {}: {}", username, query, e.getMessage());
+            throw new RuntimeException("Error executing query", e);
         }
     }
 
@@ -147,6 +185,29 @@ public class ControllerDBP {
         return new TableData(columns, rows);
     }
 
+    
+    private TableData executeQuery(Connection conn, String query) throws SQLException {
+        List<String> columns = new ArrayList<>();
+        List<List<Object>> rows = new ArrayList<>();
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            int columnCount = rs.getMetaData().getColumnCount();
+            for (int i = 1; i <= columnCount; i++) {
+                columns.add(rs.getMetaData().getColumnName(i));
+            }
+            while (rs.next()) {
+                List<Object> row = new ArrayList<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    row.add(rs.getObject(i));
+                }
+                rows.add(row);
+            }
+        }
+        return new TableData(columns, rows);
+        }
+    
+    
+
     public static class TableData {
         private List<String> columns;
         private List<List<Object>> rows;
@@ -164,5 +225,19 @@ public class ControllerDBP {
             return rows;
         }
     }
+
+
+    public static class QueryRequest {
+        private String query;
+        
+        public String getQuery() {
+        return query;
+    }
+
+    public void setQuery(String query) {
+        this.query = query;
+        }
+    }
+    
 
 }
