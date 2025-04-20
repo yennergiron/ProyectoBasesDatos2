@@ -89,6 +89,57 @@
                                     </div>
                                 </div>
                             </div>
+<!--
+                            <div class="tab-pane fade show active" id="userManagement">
+                                <div class="row">
+                                    <div class="col-md-5">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="mb-0">User List</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="list-group" id="userList">
+                                                    User list will be loaded here
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-7">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="mb-0">User Operations</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <form id="userForm">
+                                                    <div class="mb-3">
+                                                        <label for="username" class="form-label">Username</label>
+                                                        <input type="text" class="form-control" id="username" required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="password" class="form-label">Password</label>
+                                                        <input type="password" class="form-control" id="password">
+                                                        <div class="form-text" id="passwordHelpBlock">
+                                                            Leave blank when dropping a user.
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="host" class="form-label">Host</label>
+                                                        <input type="text" class="form-control" id="host" placeholder="%" value="%">
+                                                        <div class="form-text">
+                                                            Use % for any host, localhost for local connections only.
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex gap-2">
+                                                        <button type="button" class="btn btn-success" onclick="createUser()">Create User</button>
+                                                        <button type="button" class="btn btn-primary" onclick="alterUser()">Alter User</button>
+                                                        <button type="button" class="btn btn-danger" onclick="dropUser()">Drop User</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>-->
                             
                             <!-- Regular User Operations -->
                             <div th:unless="${isAdmin}" class="col-md-4 mb-4">
@@ -122,36 +173,111 @@
         </div>
     </div>
 
-    <!-- Admin Modal -->
-    <div th:if="${isAdmin}" class="modal fade" id="adminModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Admin Tools</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- Admin Modal -->
+<div th:if="${isAdmin}" class="modal fade" id="adminModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">User Management</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col d-flex justify-content-end">
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                            <i class="bi bi-person-plus"></i> Create User
+                        </button>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <ul class="nav nav-tabs" id="adminTabs">
-                        <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#userManagement">User Management</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#tableManagement">Table Management</a>
-                        </li>
-                    </ul>
-                    
-                    <div class="tab-content mt-3">
-                        <div class="tab-pane fade show active" id="userManagement">
-                            <!-- User management form -->
-                        </div>
-                        <div class="tab-pane fade" id="tableManagement">
-                            <!-- Table management form -->
+                
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">User List</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Host</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userList">
+                                    <!-- User list will be loaded here -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
+</div>
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createUserForm">
+                    <div class="mb-3">
+                        <label for="newUsername" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="newUsername" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newHost" class="form-label">Host</label>
+                        <input type="text" class="form-control" id="newHost" value="%" placeholder="%">
+                        <div class="form-text">
+                            Use % for any host, localhost for local connections only.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="createUserSubmit()">Create User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alter User Modal -->
+<div class="modal fade" id="alterUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="alterUserForm">
+                    <input type="hidden" id="alterUsername">
+                    <input type="hidden" id="alterHost">
+                    <div class="mb-3">
+                        <label for="alterPassword" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="alterPassword" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="alterUserSubmit()">Update Password</button>
+            </div>
+        </div>
+    </div>
+</div>
 
     <footer class="bg-light mt-5 py-3">
         <div class="container text-center">
@@ -285,6 +411,187 @@
                 .catch(error => console.error('Error running query:', error));
             }
         }
+// Function to load user management modal
+function manageUsers() {
+    // Load the user list
+    loadUserList();
+    
+    // Show the modal
+    const adminModal = new bootstrap.Modal(document.getElementById('adminModal'));
+    adminModal.show();
+}
+
+// Function to load the user list
+function loadUserList() {
+    fetch('/listUsers')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(users => {
+            const userList = document.getElementById('userList');
+            userList.innerHTML = '';
+            
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                
+                // Username cell
+                const usernameCell = document.createElement('td');
+                usernameCell.textContent = user.username;
+                row.appendChild(usernameCell);
+                
+                // Host cell
+                const hostCell = document.createElement('td');
+                hostCell.textContent = user.host;
+                row.appendChild(hostCell);
+                
+                // Actions cell
+                const actionsCell = document.createElement('td');
+                
+                // Alter button
+                const alterBtn = document.createElement('button');
+                alterBtn.className = 'btn btn-sm btn-primary me-2';
+                alterBtn.innerHTML = '<i class="bi bi-pencil"></i> Change Password';
+                alterBtn.onclick = () => openAlterUserModal(user.username, user.host);
+                actionsCell.appendChild(alterBtn);
+                
+                // Drop button
+                const dropBtn = document.createElement('button');
+                dropBtn.className = 'btn btn-sm btn-danger';
+                dropBtn.innerHTML = '<i class="bi bi-trash"></i> Drop';
+                dropBtn.onclick = () => confirmDropUser(user.username, user.host);
+                actionsCell.appendChild(dropBtn);
+                
+                row.appendChild(actionsCell);
+                
+                userList.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Error loading users:', error));
+}
+
+// Open the alter user modal
+function openAlterUserModal(username, host) {
+    document.getElementById('alterUsername').value = username;
+    document.getElementById('alterHost').value = host;
+    
+    const alterUserModal = new bootstrap.Modal(document.getElementById('alterUserModal'));
+    alterUserModal.show();
+}
+
+// Submit the alter user form
+function alterUserSubmit() {
+    const username = document.getElementById('alterUsername').value;
+    const password = document.getElementById('alterPassword').value;
+    const host = document.getElementById('alterHost').value;
+    
+    if (!password) {
+        alert('Password is required');
+        return;
+    }
+    
+    fetch('/alterUser', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password, host })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        
+        // Close the modal
+        const alterUserModal = bootstrap.Modal.getInstance(document.getElementById('alterUserModal'));
+        alterUserModal.hide();
+        
+        // Clear the form
+        document.getElementById('alterPassword').value = '';
+    })
+    .catch(error => {
+        console.error('Error altering user:', error);
+        alert('Error altering user. Check console for details.');
+    });
+}
+
+// Function to create a new user (from the create user modal)
+function createUserSubmit() {
+    const username = document.getElementById('newUsername').value;
+    const password = document.getElementById('newPassword').value;
+    const host = document.getElementById('newHost').value;
+    
+    if (!username || !password) {
+        alert('Username and password are required');
+        return;
+    }
+    
+    fetch('/createUser', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password, host })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        
+        // Close the modal
+        const createUserModal = bootstrap.Modal.getInstance(document.getElementById('createUserModal'));
+        createUserModal.hide();
+        
+        // Clear the form
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('newHost').value = '%';
+        
+        // Refresh the user list
+        loadUserList();
+    })
+    .catch(error => {
+        console.error('Error creating user:', error);
+        alert('Error creating user. Check console for details.');
+    });
+}
+
+// Confirm and drop a user
+function confirmDropUser(username, host) {
+    if (confirm(`Are you sure you want to drop user '${username}'@'${host}'? This cannot be undone.`)) {
+        fetch('/dropUser', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, host })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            alert(data.message);
+            loadUserList();
+        })
+        .catch(error => {
+            console.error('Error dropping user:', error);
+            alert('Error dropping user. Check console for details.');
+        });
+    }
+}
 </script>        
 </body>
 </html>

@@ -117,6 +117,101 @@ public class ControllerDBP {
         }
     }
 
+    @PostMapping("/createUser")
+@ResponseBody
+public ResponseMessage createUser(@RequestBody UserRequest userRequest, Principal principal) throws SQLException {
+    String adminUsername = principal.getName();
+    
+    try (Connection conn = dataSource.getConnection()) {
+        // Verify the current user has admin privileges
+        if (!checkSuperPrivilege(conn, adminUsername)) {
+            return new ResponseMessage("Error: Insufficient privileges");
+        }
+        
+        // Create the user
+        String username = userRequest.getUsername();
+        String password = userRequest.getPassword();
+        String host = userRequest.getHost() != null ? userRequest.getHost() : "%";
+        
+        String sql = "CREATE USER '" + username + "'@'" + host + "' IDENTIFIED BY '" + password + "'";
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+            return new ResponseMessage("User created successfully");
+        }
+    }
+}
+
+@PostMapping("/alterUser")
+@ResponseBody
+public ResponseMessage alterUser(@RequestBody UserRequest userRequest, Principal principal) throws SQLException {
+    String adminUsername = principal.getName();
+    
+    try (Connection conn = dataSource.getConnection()) {
+        // Verify the current user has admin privileges
+        if (!checkSuperPrivilege(conn, adminUsername)) {
+            return new ResponseMessage("Error: Insufficient privileges");
+        }
+        
+        // Alter the user
+        String username = userRequest.getUsername();
+        String password = userRequest.getPassword();
+        String host = userRequest.getHost() != null ? userRequest.getHost() : "%";
+        
+        String sql = "ALTER USER '" + username + "'@'" + host + "' IDENTIFIED BY '" + password + "'";
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+            return new ResponseMessage("User updated successfully");
+        }
+    }
+}
+
+@PostMapping("/dropUser")
+@ResponseBody
+public ResponseMessage dropUser(@RequestBody UserRequest userRequest, Principal principal) throws SQLException {
+    String adminUsername = principal.getName();
+    
+    try (Connection conn = dataSource.getConnection()) {
+        // Verify the current user has admin privileges
+        if (!checkSuperPrivilege(conn, adminUsername)) {
+            return new ResponseMessage("Error: Insufficient privileges");
+        }
+        
+        // Drop the user
+        String username = userRequest.getUsername();
+        String host = userRequest.getHost() != null ? userRequest.getHost() : "%";
+        
+        String sql = "DROP USER '" + username + "'@'" + host + "'";
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+            return new ResponseMessage("User dropped successfully");
+        }
+    }
+}
+
+@GetMapping("/listUsers")
+@ResponseBody
+public List<UserInfo> listUsers(Principal principal) throws SQLException {
+    String adminUsername = principal.getName();
+    List<UserInfo> users = new ArrayList<>();
+    
+    try (Connection conn = dataSource.getConnection()) {
+        // Verify the current user has admin privileges
+        if (!checkSuperPrivilege(conn, adminUsername)) {
+            return users; // Return empty list if not admin
+        }
+        
+        // Get user list
+        String sql = "SELECT User, Host FROM mysql.user ORDER BY User";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                users.add(new UserInfo(rs.getString("User"), rs.getString("Host")));
+            }
+        }
+    }
+    return users;
+}
+
     private boolean checkSuperPrivilege(Connection conn, String username) throws SQLException {
         String sql = "SELECT Super_priv FROM mysql.user WHERE User = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -239,5 +334,65 @@ public class ControllerDBP {
         }
     }
     
+    // Additional classes for request/response handling
+public static class UserRequest {
+    private String username;
+    private String password;
+    private String host;
+    
+    public String getUsername() {
+        return username;
+    }
+    
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    
+    public String getPassword() {
+        return password;
+    }
+    
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    
+    public String getHost() {
+        return host;
+    }
+    
+    public void setHost(String host) {
+        this.host = host;
+    }
+}
+
+public static class UserInfo {
+    private String username;
+    private String host;
+    
+    public UserInfo(String username, String host) {
+        this.username = username;
+        this.host = host;
+    }
+    
+    public String getUsername() {
+        return username;
+    }
+    
+    public String getHost() {
+        return host;
+    }
+}
+
+public static class ResponseMessage {
+    private String message;
+    
+    public ResponseMessage(String message) {
+        this.message = message;
+    }
+    
+    public String getMessage() {
+        return message;
+    }
+}
 
 }
