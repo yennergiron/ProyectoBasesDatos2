@@ -212,6 +212,38 @@ public List<UserInfo> listUsers(Principal principal) throws SQLException {
     return users;
 }
 
+@PostMapping("/grantRoles")
+@ResponseBody
+public ResponseMessage grantRoles(@RequestBody GrantRequest grantRequest, Principal principal) throws SQLException {
+    String adminUsername = principal.getName();
+    
+    try (Connection conn = dataSource.getConnection()) {
+        // Verify the current user has admin privileges
+        if (!checkSuperPrivilege(conn, adminUsername)) {
+            return new ResponseMessage("Error: Insufficient privileges");
+        }
+        
+        // Grant the privileges
+        String username = grantRequest.getUsername();
+        String host = grantRequest.getHost();
+        String database = grantRequest.getDatabase();
+        List<String> privileges = grantRequest.getPrivileges();
+        
+        // Convert list of privileges to SQL privileges string
+        String privilegesStr = privileges.isEmpty() ? "ALL PRIVILEGES" : String.join(", ", privileges);
+        
+        String sql = "GRANT " + privilegesStr + " ON " + database + ".* TO '" + username + "'@'" + host + "'";
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+            
+            // Execute FLUSH PRIVILEGES to apply changes
+            stmt.execute("FLUSH PRIVILEGES");
+            
+            return new ResponseMessage("Privileges granted successfully");
+        }
+    }
+}
+
     private boolean checkSuperPrivilege(Connection conn, String username) throws SQLException {
         String sql = "SELECT Super_priv FROM mysql.user WHERE User = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -392,6 +424,47 @@ public static class ResponseMessage {
     
     public String getMessage() {
         return message;
+    }
+}
+
+
+// Add this class for grant request
+public static class GrantRequest {
+    private String username;
+    private String host;
+    private String database;
+    private List<String> privileges;
+    
+    public String getUsername() {
+        return username;
+    }
+    
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    
+    public String getHost() {
+        return host;
+    }
+    
+    public void setHost(String host) {
+        this.host = host;
+    }
+    
+    public String getDatabase() {
+        return database;
+    }
+    
+    public void setDatabase(String database) {
+        this.database = database;
+    }
+    
+    public List<String> getPrivileges() {
+        return privileges;
+    }
+    
+    public void setPrivileges(List<String> privileges) {
+        this.privileges = privileges;
     }
 }
 

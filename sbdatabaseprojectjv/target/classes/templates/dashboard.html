@@ -89,58 +89,7 @@
                                     </div>
                                 </div>
                             </div>
-<!--
-                            <div class="tab-pane fade show active" id="userManagement">
-                                <div class="row">
-                                    <div class="col-md-5">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5 class="mb-0">User List</h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="list-group" id="userList">
-                                                    User list will be loaded here
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-7">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5 class="mb-0">User Operations</h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <form id="userForm">
-                                                    <div class="mb-3">
-                                                        <label for="username" class="form-label">Username</label>
-                                                        <input type="text" class="form-control" id="username" required>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="password" class="form-label">Password</label>
-                                                        <input type="password" class="form-control" id="password">
-                                                        <div class="form-text" id="passwordHelpBlock">
-                                                            Leave blank when dropping a user.
-                                                        </div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="host" class="form-label">Host</label>
-                                                        <input type="text" class="form-control" id="host" placeholder="%" value="%">
-                                                        <div class="form-text">
-                                                            Use % for any host, localhost for local connections only.
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex gap-2">
-                                                        <button type="button" class="btn btn-success" onclick="createUser()">Create User</button>
-                                                        <button type="button" class="btn btn-primary" onclick="alterUser()">Alter User</button>
-                                                        <button type="button" class="btn btn-danger" onclick="dropUser()">Drop User</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>-->
-                            
+
                             <!-- Regular User Operations -->
                             <div th:unless="${isAdmin}" class="col-md-4 mb-4">
                                 <div class="card h-100">
@@ -183,7 +132,10 @@
             </div>
             <div class="modal-body">
                 <div class="row mb-3">
-                    <div class="col d-flex justify-content-end">
+                    <div class="col d-flex justify-content-end gap-2">
+                        <button class="btn btn-primary" onclick="openGrantRolesModal()">
+                            <i class="bi bi-shield-lock"></i> Grant Roles
+                        </button>
                         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal">
                             <i class="bi bi-person-plus"></i> Create User
                         </button>
@@ -274,6 +226,96 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="alterUserSubmit()">Update Password</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grant Roles Modal -->
+<div class="modal fade" id="grantRolesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Grant Database Roles</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Select User</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group" id="grantUserList">
+                                    <!-- User list will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Grant Privileges</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="grantRolesForm">
+                                    <input type="hidden" id="grantUsername">
+                                    <input type="hidden" id="grantHost">
+                                    
+                                    <div class="mb-3">
+                                        <label for="grantDatabase" class="form-label">Database</label>
+                                        <select class="form-select" id="grantDatabase" required>
+                                            <option value="">-- Select Database --</option>
+                                            <!-- Database options will be loaded dynamically -->
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Privileges</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="privSelect">
+                                            <label class="form-check-label" for="privSelect">SELECT</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="privInsert">
+                                            <label class="form-check-label" for="privInsert">INSERT</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="privUpdate">
+                                            <label class="form-check-label" for="privUpdate">UPDATE</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="privDelete">
+                                            <label class="form-check-label" for="privDelete">DELETE</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="privCreate">
+                                            <label class="form-check-label" for="privCreate">CREATE</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="privDrop">
+                                            <label class="form-check-label" for="privDrop">DROP</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="privAll">
+                                            <label class="form-check-label" for="privAll">ALL PRIVILEGES</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button type="button" class="btn btn-primary" onclick="grantRolesSubmit()">
+                                            Grant Privileges
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -591,6 +633,157 @@ function confirmDropUser(username, host) {
             alert('Error dropping user. Check console for details.');
         });
     }
+}
+
+// Function to open the grant roles modal
+function openGrantRolesModal() {
+    // Load the user list for grants
+    loadGrantUserList();
+    
+    // Load databases for the grant form
+    loadDatabasesForGrant();
+    
+    // Show the modal
+    const grantRolesModal = new bootstrap.Modal(document.getElementById('grantRolesModal'));
+    grantRolesModal.show();
+}
+
+// Function to load users for the grant roles modal
+function loadGrantUserList() {
+    fetch('/listUsers')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(users => {
+            const userList = document.getElementById('grantUserList');
+            userList.innerHTML = '';
+            
+            users.forEach(user => {
+                const userItem = document.createElement('button');
+                userItem.className = 'list-group-item list-group-item-action';
+                userItem.textContent = `${user.username}@${user.host}`;
+                userItem.onclick = () => {
+                    // Highlight the selected user
+                    document.querySelectorAll('#grantUserList .list-group-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    userItem.classList.add('active');
+                    
+                    // Set the selected user in the form
+                    document.getElementById('grantUsername').value = user.username;
+                    document.getElementById('grantHost').value = user.host;
+                };
+                userList.appendChild(userItem);
+            });
+        })
+        .catch(error => console.error('Error loading users for grants:', error));
+}
+
+// Function to load databases for the grant form
+function loadDatabasesForGrant() {
+    // Use the existing database list from the main dashboard
+    const databaseSelect = document.getElementById('databaseSelect');
+    const grantDatabase = document.getElementById('grantDatabase');
+    
+    // Clear and re-populate the dropdown
+    grantDatabase.innerHTML = '<option value="">-- Select Database --</option>';
+    
+    // Copy options from the main database select
+    Array.from(databaseSelect.options).forEach(option => {
+        if (option.value) { // Skip the placeholder option
+            const newOption = document.createElement('option');
+            newOption.value = option.value;
+            newOption.textContent = option.textContent;
+            grantDatabase.appendChild(newOption);
+        }
+    });
+}
+
+// Function to handle the "ALL PRIVILEGES" checkbox
+document.addEventListener('DOMContentLoaded', function() {
+    // This will run when the document is fully loaded
+    const privAllCheckbox = document.getElementById('privAll');
+    if (privAllCheckbox) {
+        privAllCheckbox.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('#grantRolesForm .form-check-input:not(#privAll)');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = privAllCheckbox.checked;
+                checkbox.disabled = privAllCheckbox.checked;
+            });
+        });
+    }
+});
+
+// Function to submit the grant roles form
+function grantRolesSubmit() {
+    const username = document.getElementById('grantUsername').value;
+    const host = document.getElementById('grantHost').value;
+    const database = document.getElementById('grantDatabase').value;
+    
+    if (!username || !host || !database) {
+        alert('Please select a user and database');
+        return;
+    }
+    
+    // Collect selected privileges
+    const privileges = [];
+    if (document.getElementById('privAll').checked) {
+        privileges.push('ALL PRIVILEGES');
+    } else {
+        if (document.getElementById('privSelect').checked) privileges.push('SELECT');
+        if (document.getElementById('privInsert').checked) privileges.push('INSERT');
+        if (document.getElementById('privUpdate').checked) privileges.push('UPDATE');
+        if (document.getElementById('privDelete').checked) privileges.push('DELETE');
+        if (document.getElementById('privCreate').checked) privileges.push('CREATE');
+        if (document.getElementById('privDrop').checked) privileges.push('DROP');
+    }
+    
+    if (privileges.length === 0) {
+        alert('Please select at least one privilege to grant');
+        return;
+    }
+    
+    fetch('/grantRoles', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, host, database, privileges })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        
+        // Close the modal
+        const grantRolesModal = bootstrap.Modal.getInstance(document.getElementById('grantRolesModal'));
+        grantRolesModal.hide();
+        
+        // Reset form
+        document.getElementById('grantUsername').value = '';
+        document.getElementById('grantHost').value = '';
+        document.getElementById('grantDatabase').value = '';
+        document.querySelectorAll('#grantRolesForm .form-check-input').forEach(checkbox => {
+            checkbox.checked = false;
+            checkbox.disabled = false;
+        });
+        
+        // Clear user selection
+        document.querySelectorAll('#grantUserList .list-group-item').forEach(item => {
+            item.classList.remove('active');
+        });
+    })
+    .catch(error => {
+        console.error('Error granting privileges:', error);
+        alert('Error granting privileges. Check console for details.');
+    });
 }
 </script>        
 </body>
