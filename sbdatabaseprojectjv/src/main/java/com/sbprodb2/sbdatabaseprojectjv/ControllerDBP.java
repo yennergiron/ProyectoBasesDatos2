@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 
 import javax.sql.DataSource;
+import javax.swing.table.TableColumn;
 
 @Controller
 public class ControllerDBP {
@@ -265,6 +266,128 @@ public ResponseMessage grantRoles(@RequestBody GrantRequest grantRequest, Princi
     }
 }
 
+@GetMapping("/database-management")
+public String showDatabaseManagement(Principal principal, Model model) throws SQLException {
+    String username = principal.getName();
+    model.addAttribute("username", username);
+
+    try (Connection conn = dataSource.getConnection()) {
+        // Check if user has SUPER privilege
+        boolean isAdmin = checkSuperPrivilege(conn, username);
+        model.addAttribute("isAdmin", isAdmin);
+
+        // Get list of databases the user can access
+        List<String> databases = getAccessibleDatabases(conn, username, isAdmin);
+        model.addAttribute("databases", databases);
+    }
+
+    return "database-management";
+}
+
+// New methods to handle database operations
+@PostMapping("/createSchema")
+@ResponseBody
+public ResponseMessage createSchema(@RequestBody SchemaRequest schemaRequest, Principal principal) throws SQLException {
+    String username = principal.getName();
+    
+    try (Connection conn = dataSource.getConnection()) {
+        // Verify the current user has admin privileges
+        if (!checkSuperPrivilege(conn, username)) {
+            return new ResponseMessage("Error: Insufficient privileges");
+        }
+        
+        // Create the schema
+        String schemaName = schemaRequest.getSchemaName();
+        String sql = "CREATE DATABASE " + schemaName;
+        
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+            return new ResponseMessage("Schema created successfully");
+        }
+    }
+}
+
+@PostMapping("/createTable")
+@ResponseBody
+public ResponseMessage createTable(@RequestBody TableRequest tableRequest, Principal principal) throws SQLException {
+    String username = principal.getName();
+    
+    try (Connection conn = dataSource.getConnection()) {
+        // Check privileges
+        boolean isAdmin = checkSuperPrivilege(conn, username);
+        if (!isAdmin) {
+            // For non-admins, check if they have CREATE privilege on the database
+            // Logic to check specific privileges could be added here
+        }
+        
+        // Create the table
+        String database = tableRequest.getDatabase();
+        String tableName = tableRequest.getTableName();
+        List<TableColumn> columns = tableRequest.getColumns();
+        
+        StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append("CREATE TABLE ").append(database).append(".").append(tableName).append(" (");
+        
+        for (int i = 0; i < columns.size(); i++) {
+            TableColumn column = columns.get(i);
+            sqlBuilder.append(column.getName()).append(" ").append(column.getType());
+            
+            if (column.getLength() != null && !column.getLength().isEmpty()) {
+                sqlBuilder.append("(").append(column.getLength()).append(")");
+            }
+            
+            if (column.isPrimaryKey()) {
+                sqlBuilder.append(" PRIMARY KEY");
+            }
+            
+            if (column.isNotNull()) {
+                sqlBuilder.append(" NOT NULL");
+            }
+            
+            if (column.isAutoIncrement()) {
+                sqlBuilder.append(" AUTO_INCREMENT");
+            }
+            
+            if (i < columns.size() - 1) {
+                sqlBuilder.append(", ");
+            }
+        }
+        
+        sqlBuilder.append(")");
+        
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(sqlBuilder.toString());
+            return new ResponseMessage("Table created successfully");
+        }
+    }
+}
+
+@PostMapping("/dropTable")
+@ResponseBody
+public ResponseMessage dropTable(@RequestBody TableRequest tableRequest, Principal principal) throws SQLException {
+    String username = principal.getName();
+    
+    try (Connection conn = dataSource.getConnection()) {
+        // Check privileges
+        boolean isAdmin = checkSuperPrivilege(conn, username);
+        if (!isAdmin) {
+            // For non-admins, check if they have DROP privilege on the database
+            // Logic to check specific privileges could be added here
+        }
+        
+        // Drop the table
+        String database = tableRequest.getDatabase();
+        String tableName = tableRequest.getTableName();
+        
+        String sql = "DROP TABLE " + database + "." + tableName;
+        
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+            return new ResponseMessage("Table dropped successfully");
+        }
+    }
+}
+
     private boolean checkSuperPrivilege(Connection conn, String username) throws SQLException {
         String sql = "SELECT Super_priv FROM mysql.user WHERE User = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -504,6 +627,106 @@ public static class GrantRequest {
     
     public void setRevoke(Boolean revoke) {
         this.revoke = revoke;
+    }
+}
+
+// Additional classes for request/response handling
+public static class SchemaRequest {
+    private String schemaName;
+    
+    public String getSchemaName() {
+        return schemaName;
+    }
+    
+    public void setSchemaName(String schemaName) {
+        this.schemaName = schemaName;
+    }
+}
+
+public static class TableRequest {
+    private String database;
+    private String tableName;
+    private List<TableColumn> columns;
+    
+    public String getDatabase() {
+        return database;
+    }
+    
+    public void setDatabase(String database) {
+        this.database = database;
+    }
+    
+    public String getTableName() {
+        return tableName;
+    }
+    
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
+    
+    public List<TableColumn> getColumns() {
+        return columns;
+    }
+    
+    public void setColumns(List<TableColumn> columns) {
+        this.columns = columns;
+    }
+}
+
+public static class TableColumn {
+    private String name;
+    private String type;
+    private String length;
+    private boolean primaryKey;
+    private boolean notNull;
+    private boolean autoIncrement;
+    
+    public String getName() {
+        return name;
+    }
+    
+    public void setName(String name) {
+        this.name = name;
+    }
+    
+    public String getType() {
+        return type;
+    }
+    
+    public void setType(String type) {
+        this.type = type;
+    }
+    
+    public String getLength() {
+        return length;
+    }
+    
+    public void setLength(String length) {
+        this.length = length;
+    }
+    
+    public boolean isPrimaryKey() {
+        return primaryKey;
+    }
+    
+    public void setPrimaryKey(boolean primaryKey) {
+        this.primaryKey = primaryKey;
+    }
+    
+    public boolean isNotNull() {
+        return notNull;
+    }
+    
+    public void setNotNull(boolean notNull) {
+        this.notNull = notNull;
+    }
+    
+    public boolean isAutoIncrement() {
+        return autoIncrement;
+    }
+    
+    public void setAutoIncrement(boolean autoIncrement) {
+        this.autoIncrement = autoIncrement;
     }
 }
 

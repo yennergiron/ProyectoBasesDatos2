@@ -37,7 +37,8 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
             .anyRequest().authenticated()
         )
         .csrf(csrf -> csrf.ignoringRequestMatchers(
-            "/runQuery", "/createUser", "/alterUser", "/dropUser","/listUsers","/grantRoles")) // Disable CSRF for these endpoints
+            "/runQuery", "/createUser", "/alterUser", "/dropUser","/listUsers","/grantRoles",
+            "/createSchema", "/createTable", "/dropTable")) // Disable CSRF for these endpoints
         .formLogin(form -> form
             .loginPage("/login")
             .defaultSuccessUrl("/dashboard", true)

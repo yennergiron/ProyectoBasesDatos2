@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Management | Database Project</title>
+    <link rel="stylesheet" th:href="@{/css/StyleDashboard.css}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card-header-tabs {
+            margin-right: 0;
+            margin-bottom: -0.75rem;
+            margin-left: 0;
+            border-bottom: 0;
+        }
+        .tab-content {
+            padding: 20px 0;
+        }
+        .action-button {
+            min-width: 120px;
+        }
+        .table-actions {
+            width: 180px;
+        }
+        .column-row {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .remove-column {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Database Project</a>
+            <div class="navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <span class="nav-link">Welcome, <span th:text="${username}"></span></span>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/dashboard" class="btn btn-outline-light me-2">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <form th:action="@{/logout}" method="post">
+                            <button class="btn btn-outline-light" type="submit">Logout</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-10 mx-auto">
+                <div class="card shadow">
+                    <div class="card-header bg-white">
+                        <ul class="nav nav-tabs card-header-tabs" id="dbManagementTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="schemas-tab" data-bs-toggle="tab" data-bs-target="#schemas" type="button" role="tab">Create Schema</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="create-table-tab" data-bs-toggle="tab" data-bs-target="#create-table" type="button" role="tab">Create Table</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="drop-table-tab" data-bs-toggle="tab" data-bs-target="#drop-table" type="button" role="tab">Drop Table</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="dbManagementTabContent">
+                            <!-- Create Schema Tab -->
+                            <div class="tab-pane fade show active" id="schemas" role="tabpanel" aria-labelledby="schemas-tab">
+                                <h4>Create New Schema (Database)</h4>
+                                <p class="text-muted">Create a new schema in your MySQL server.</p>
+                                
+                                <form id="createSchemaForm" class="mt-4">
+                                    <div class="mb-3">
+                                        <label for="schemaName" class="form-label">Schema Name</label>
+                                        <input type="text" class="form-control" id="schemaName" placeholder="Enter schema name" required>
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                        <button type="button" class="btn btn-primary action-button" onclick="createSchema()">Create Schema</button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Create Table Tab -->
+                            <div class="tab-pane fade" id="create-table" role="tabpanel" aria-labelledby="create-table-tab">
+                                <h4>Create New Table</h4>
+                                <p class="text-muted">Define and create a new table in the selected database.</p>
+                                
+                                <form id="createTableForm" class="mt-4">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="tableDatabase" class="form-label">Database</label>
+                                            <select class="form-select" id="tableDatabase" required>
+                                                <option value="">-- Select Database --</option>
+                                                <option th:each="db : ${databases}" th:value="${db}" th:text="${db}"></option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="tableName" class="form-label">Table Name</label>
+                                            <input type="text" class="form-control" id="tableName" placeholder="Enter table name" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <h5 class="mt-4">Columns</h5>
+                                    <div id="tableColumns">
+                                        <!-- Column templates will be added here dynamically -->
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-start mb-4">
+                                        <button type="button" class="btn btn-secondary" onclick="addColumn()">
+                                            <i class="bi bi-plus-circle"></i> Add Column
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                        <button type="button" class="btn btn-primary action-button" onclick="createTable()">Create Table</button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Drop Table Tab -->
+                            <div class="tab-pane fade" id="drop-table" role="tabpanel" aria-labelledby="drop-table-tab">
+                                <h4>Drop Table</h4>
+                                <p class="text-muted">Remove an existing table from the database. This action cannot be undone.</p>
+                                
+                                <form id="dropTableForm" class="mt-4">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="dropDatabase" class="form-label">Database</label>
+                                            <select class="form-select" id="dropDatabase" onchange="loadTables()" required>
+                                                <option value="">-- Select Database --</option>
+                                                <option th:each="db : ${databases}" th:value="${db}" th:text="${db}"></option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="dropTableName" class="form-label">Table</label>
+                                            <select class="form-select" id="dropTableName" required>
+                                                <option value="">-- Select Table --</option>
+                                                <!-- Tables will be loaded dynamically -->
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="alert alert-danger">
+                                        <i class="bi bi-exclamation-triangle-fill"></i> Warning: Dropping a table will permanently delete the table and all its data. This action cannot be undone.
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                        <button type="button" class="btn btn-danger action-button" onclick="dropTable()">Drop Table</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-light mt-5 py-3">
+        <div class="container text-center">
+            <span class="text-muted">© 2025 Database Project. All rights reserved.</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <script>
+        // Create Schema
+        function createSchema() {
+            const schemaName = document.getElementById('schemaName').value;
+            
+            if (!schemaName) {
+                alert('Please enter a schema name');
+                return;
+            }
+            
+            fetch('/createSchema', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ schemaName })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                document.getElementById('schemaName').value = '';
+                // Refresh page to update the database list
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            })
+            .catch(error => {
+                console.error('Error creating schema:', error);
+                alert('Error creating schema. Check console for details.');
+            });
+        }
+        
+        // Column counter
+        let columnCount = 0;
+        
+        // Add a new column to the table creation form
+        function addColumn() {
+            const columnsContainer = document.getElementById('tableColumns');
+            
+            // Increment column counter
+            columnCount++;
+            
+            // Create a new column row
+            const columnRow = document.createElement('div');
+            columnRow.className = 'column-row';
+            columnRow.id = `column-${columnCount}`;
+            
+            columnRow.innerHTML = `
+                <button type="button" class="btn-close remove-column" onclick="removeColumn(${columnCount})"></button>
+                <div class="row mb-2">
+                    <div class="col-md-4">
+                        <label for="columnName-${columnCount}" class="form-label">Column Name</label>
+                        <input type="text" class="form-control" id="columnName-${columnCount}" placeholder="Column name" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="columnType-${columnCount}" class="form-label">Data Type</label>
+                        <select class="form-select" id="columnType-${columnCount}" required>
+                            <option value="INT">INT</option>
+                            <option value="VARCHAR">VARCHAR</option>
+                            <option value="TEXT">TEXT</option>
+                            <option value="DATE">DATE</option>
+                            <option value="DATETIME">DATETIME</option>
+                            <option value="FLOAT">FLOAT</option>
+                            <option value="DOUBLE">DOUBLE</option>
+                            <option value="DECIMAL">DECIMAL</option>
+                            <option value="BOOLEAN">BOOLEAN</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="columnLength-${columnCount}" class="form-label">Length/Values</label>
+                        <input type="text" class="form-control" id="columnLength-${columnCount}" placeholder="e.g. 255">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="primaryKey-${columnCount}">
+                            <label class="form-check-label" for="primaryKey-${columnCount}">Primary Key</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="notNull-${columnCount}">
+                            <label class="form-check-label" for="notNull-${columnCount}">Not Null</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="autoIncrement-${columnCount}">
+                            <label class="form-check-label" for="autoIncrement-${columnCount}">Auto Increment</label>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            columnsContainer.appendChild(columnRow);
+        }
+        
+        // Remove a column from the table creation form
+        function removeColumn(id) {
+            const columnElement = document.getElementById(`column-${id}`);
+            if (columnElement) {
+                columnElement.remove();
+            }
+        }
+        
+        // Create a new table
+        function createTable() {
+            const database = document.getElementById('tableDatabase').value;
+            const tableName = document.getElementById('tableName').value;
+            
+            if (!database || !tableName) {
+                alert('Please select a database and enter a table name');
+                return;
+            }
+            
+            // Get all column rows
+            const columnRows = document.querySelectorAll('#tableColumns .column-row');
+            
+            if (columnRows.length === 0) {
+                alert('Please add at least one column');
+                return;
+            }
+            
+            // Collect column data
+            const columns = [];
+            
+            columnRows.forEach(row => {
+                const id = row.id.split('-')[1];
+                
+                const name = document.getElementById(`columnName-${id}`).value;
+                const type = document.getElementById(`columnType-${id}`).value;
+                const length = document.getElementById(`columnLength-${id}`).value;
+                const primaryKey = document.getElementById(`primaryKey-${id}`).checked;
+                const notNull = document.getElementById(`notNull-${id}`).checked;
+                const autoIncrement = document.getElementById(`autoIncrement-${id}`).checked;
+                
+                if (name && type) {
+                    columns.push({
+                        name,
+                        type,
+                        length,
+                        primaryKey,
+                        notNull,
+                        autoIncrement
+                    });
+                }
+            });
+            
+            if (columns.length === 0) {
+                alert('Please complete at least one column definition');
+                return;
+            }
+            
+            // Send the request
+            fetch('/createTable', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    database,
+                    tableName,
+                    columns
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                
+                // Reset the form
+                document.getElementById('tableDatabase').value = '';
+                document.getElementById('tableName').value = '';
+                document.getElementById('tableColumns').innerHTML = '';
+                columnCount = 0;
+            })
+            .catch(error => {
+                console.error('Error creating table:', error);
+                alert('Error creating table: ' + error.message);
+            });
+        }
+        
+        // Load tables for the selected database
+        function loadTables() {
+            const database = document.getElementById('dropDatabase').value;
+            const tableSelect = document.getElementById('dropTableName');
+            
+            // Reset the table select
+            tableSelect.innerHTML = '<option value="">-- Select Table --</option>';
+            
+            if (!database) {
+                return;
+            }
+            
+            fetch(`/showTables?database=${database}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(tables => {
+                    // Add each table to the select
+                    tables.forEach(table => {
+                        const option = document.createElement('option');
+                        option.value = table;
+                        option.textContent = table;
+                        tableSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading tables:', error);
+                    alert('Error loading tables. Check console for details.');
+                });
+        }
+        
+        // Drop a table
+        function dropTable() {
+            const database = document.getElementById('dropDatabase').value;
+            const tableName = document.getElementById('dropTableName').value;
+            
+            if (!database || !tableName) {
+                alert('Please select a database and table');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to drop the table '${tableName}' from database '${database}'? This action cannot be undone.`)) {
+                return;
+            }
+            
+            fetch('/dropTable', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    database,
+                    tableName
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                
+                // Reset the form and reload tables
+                document.getElementById('dropTableName').value = '';
+                loadTables();
+            })
+            .catch(error => {
+                console.error('Error dropping table:', error);
+                alert('Error dropping table. Check console for details.');
+            });
+        }
+        
+        // Add a column on page load to start with
+        document.addEventListener('DOMContentLoaded', function() {
+            addColumn();
+        });
+    </script>
+</body>
+</html>
