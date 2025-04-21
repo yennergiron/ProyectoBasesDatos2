@@ -294,6 +294,10 @@
                                             <label class="form-check-label" for="privCreate">CREATE</label>
                                         </div>
                                         <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="privAlter">
+                                            <label class="form-check-label" for="privAlter">ALTER</label>
+                                        </div>
+                                        <div class="form-check">
                                             <input class="form-check-input" type="checkbox" id="privDrop">
                                             <label class="form-check-label" for="privDrop">DROP</label>
                                         </div>
@@ -301,11 +305,23 @@
                                             <input class="form-check-input" type="checkbox" id="privAll">
                                             <label class="form-check-label" for="privAll">ALL PRIVILEGES</label>
                                         </div>
+                                        <div class="form-check mt-3 border-top pt-2">
+                                            <input class="form-check-input" type="checkbox" id="privSuper">
+                                            <label class="form-check-label fw-bold text-danger" for="privSuper">
+                                                SUPER PRIVILEGES (ALL PRIVILEGES ON *.*) 
+                                            </label>
+                                            <div class="form-text text-danger">
+                                                Warning: This grants full access to all databases and tables!
+                                            </div>
+                                        </div>
                                     </div>
                                     
-                                    <div class="d-grid">
+                                    <div class="d-grid gap-2">
                                         <button type="button" class="btn btn-primary" onclick="grantRolesSubmit()">
                                             Grant Privileges
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger" onclick="revokePrivilegesSubmit()">
+                                            Revoke All Privileges
                                         </button>
                                     </div>
                                 </form>
@@ -715,6 +731,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    const privSuperCheckbox = document.getElementById('privSuper');
+    if (privSuperCheckbox) {
+        privSuperCheckbox.addEventListener('change', function() {
+            // If SUPER is checked, disable the database selection
+            const databaseSelect = document.getElementById('grantDatabase');
+            databaseSelect.disabled = privSuperCheckbox.checked;
+            if (privSuperCheckbox.checked) {
+                // Save the previous value to restore it later
+                databaseSelect.dataset.previousValue = databaseSelect.value;
+                databaseSelect.value = '';
+            } else if (databaseSelect.dataset.previousValue) {
+                databaseSelect.value = databaseSelect.dataset.previousValue;
+            }
+        });
+    }
 });
 
 // Function to submit the grant roles form
@@ -722,9 +754,15 @@ function grantRolesSubmit() {
     const username = document.getElementById('grantUsername').value;
     const host = document.getElementById('grantHost').value;
     const database = document.getElementById('grantDatabase').value;
+    const isSuper = document.getElementById('privSuper').checked;
     
     if (!username || !host || !database) {
         alert('Please select a user and database');
+        return;
+    }
+
+    if (!isSuper && !database) {
+        alert('Please select a database');
         return;
     }
     
@@ -738,12 +776,21 @@ function grantRolesSubmit() {
         if (document.getElementById('privUpdate').checked) privileges.push('UPDATE');
         if (document.getElementById('privDelete').checked) privileges.push('DELETE');
         if (document.getElementById('privCreate').checked) privileges.push('CREATE');
+        if (document.getElementById('privAlter').checked) privileges.push('ALTER');
         if (document.getElementById('privDrop').checked) privileges.push('DROP');
     }
     
-    if (privileges.length === 0) {
+    if (!isSuper && privileges.length === 0) {
         alert('Please select at least one privilege to grant');
         return;
+    }
+
+    let sql;
+    if (isSuper) {
+        sql = `GRANT ALL PRIVILEGES ON *.* TO '${username}'@'${host}' WITH GRANT OPTION`;
+    } else {
+        const privilegesStr = privileges.join(', ');
+        sql = `GRANT ${privilegesStr} ON ${database}.* TO '${username}'@'${host}'`;
     }
     
     fetch('/grantRoles', {
@@ -751,7 +798,13 @@ function grantRolesSubmit() {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ username, host, database, privileges })
+        body: JSON.stringify({
+            username, 
+            host, 
+            database: isSuper ? '*' : database, 
+            privileges: isSuper ? ['ALL PRIVILEGES'] : privileges,
+            isSuper: isSuper
+        })
     })
     .then(response => {
         if (!response.ok) {
@@ -783,6 +836,78 @@ function grantRolesSubmit() {
     .catch(error => {
         console.error('Error granting privileges:', error);
         alert('Error granting privileges. Check console for details.');
+    });
+}
+
+//Function to Revoke all privileges
+function revokePrivilegesSubmit() {
+    const username = document.getElementById('grantUsername').value;
+    const host = document.getElementById('grantHost').value;
+    const database = document.getElementById('grantDatabase').value;
+    const isSuper = document.getElementById('privSuper').checked;
+    
+    if (!username || !host) {
+        alert('Please select a user');
+        return;
+    }
+    
+    if (!isSuper && !database) {
+        alert('Please select a database');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to revoke ALL privileges from '${username}'@'${host}' ${isSuper ? 'globally' : 'on database ' + database}?`)) {
+        return;
+    }
+    
+    fetch('/grantRoles', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+            username, 
+            host, 
+            database: isSuper ? '*' : database, 
+            privileges: [],
+            revoke: true
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        
+        // Close the modal
+        const grantRolesModal = bootstrap.Modal.getInstance(document.getElementById('grantRolesModal'));
+        grantRolesModal.hide();
+        
+        // Reset form
+        resetGrantRolesForm();
+    })
+    .catch(error => {
+        console.error('Error revoking privileges:', error);
+        alert('Error revoking privileges. Check console for details.');
+    });
+}
+
+function resetGrantRolesForm() {
+    document.getElementById('grantUsername').value = '';
+    document.getElementById('grantHost').value = '';
+    document.getElementById('grantDatabase').value = '';
+    document.getElementById('grantDatabase').disabled = false;
+    document.querySelectorAll('#grantRolesForm .form-check-input').forEach(checkbox => {
+        checkbox.checked = false;
+        checkbox.disabled = false;
+    });
+    
+    // Clear user selection
+    document.querySelectorAll('#grantUserList .list-group-item').forEach(item => {
+        item.classList.remove('active');
     });
 }
 </script>        

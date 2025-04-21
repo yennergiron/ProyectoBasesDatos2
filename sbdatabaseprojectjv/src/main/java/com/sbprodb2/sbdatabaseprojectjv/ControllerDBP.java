@@ -228,18 +228,39 @@ public ResponseMessage grantRoles(@RequestBody GrantRequest grantRequest, Princi
         String host = grantRequest.getHost();
         String database = grantRequest.getDatabase();
         List<String> privileges = grantRequest.getPrivileges();
+        Boolean isSuper = grantRequest.getIsSuper();
+        Boolean revoke = grantRequest.getRevoke();
         
-        // Convert list of privileges to SQL privileges string
-        String privilegesStr = privileges.isEmpty() ? "ALL PRIVILEGES" : String.join(", ", privileges);
+        String sql;
+        if (Boolean.TRUE.equals(revoke)) {
+            // Handle revocation
+            if ("*".equals(database)) {
+                sql = "REVOKE ALL PRIVILEGES ON *.* FROM '" + username + "'@'" + host + "'";
+            } else {
+                sql = "REVOKE ALL PRIVILEGES ON " + database + ".* FROM '" + username + "'@'" + host + "'";
+            }
+        } else if (Boolean.TRUE.equals(isSuper)) {
+            // Handle super privileges
+            sql = "GRANT ALL PRIVILEGES ON *.* TO '" + username + "'@'" + host + "' WITH GRANT OPTION";
+        } else {
+            // Handle normal privileges
+            String privilegesStr = privileges.isEmpty() ? "ALL PRIVILEGES" : String.join(", ", privileges);
+            sql = "GRANT " + privilegesStr + " ON " + database + ".* TO '" + username + "'@'" + host + "'";
+        }
         
-        String sql = "GRANT " + privilegesStr + " ON " + database + ".* TO '" + username + "'@'" + host + "'";
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
             
             // Execute FLUSH PRIVILEGES to apply changes
             stmt.execute("FLUSH PRIVILEGES");
             
-            return new ResponseMessage("Privileges granted successfully");
+            if (Boolean.TRUE.equals(revoke)) {
+                return new ResponseMessage("Privileges revoked successfully");
+            } else if (Boolean.TRUE.equals(isSuper)) {
+                return new ResponseMessage("Super privileges granted successfully");
+            } else {
+                return new ResponseMessage("Privileges granted successfully");
+            }
         }
     }
 }
@@ -434,6 +455,8 @@ public static class GrantRequest {
     private String host;
     private String database;
     private List<String> privileges;
+    private Boolean isSuper;
+    private Boolean revoke;
     
     public String getUsername() {
         return username;
@@ -465,6 +488,22 @@ public static class GrantRequest {
     
     public void setPrivileges(List<String> privileges) {
         this.privileges = privileges;
+    }
+    
+    public Boolean getIsSuper() {
+        return isSuper;
+    }
+    
+    public void setIsSuper(Boolean isSuper) {
+        this.isSuper = isSuper;
+    }
+    
+    public Boolean getRevoke() {
+        return revoke;
+    }
+    
+    public void setRevoke(Boolean revoke) {
+        this.revoke = revoke;
     }
 }
 
