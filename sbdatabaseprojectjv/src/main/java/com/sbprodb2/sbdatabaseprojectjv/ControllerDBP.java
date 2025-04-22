@@ -88,35 +88,67 @@ public class ControllerDBP {
         }
     }
 
-    
     @PostMapping("/runQuery")
-    @ResponseBody
-    public TableData runQuery(@RequestBody QueryRequest queryRequest, Principal principal) {
-        String username = principal.getName();
-        String query = queryRequest.getQuery();
-        logger.info("User {} is executing query: {}", username, query);
-        if (query == null || query.trim().isEmpty()) {
-            throw new IllegalArgumentException("Query cannot be null or empty");
+@ResponseBody
+public Object runQuery(@RequestBody QueryRequest queryRequest, Principal principal) {
+    String username = principal.getName();
+    String query = queryRequest.getQuery();
+    String selectedSchema = queryRequest.getSelectedSchema();
+    
+    logger.info("User {} is executing query on schema {}: {}", username, selectedSchema, query);
+    
+    if (query == null || query.trim().isEmpty()) {
+        return new ErrorResponse("Query cannot be null or empty");
+    }
+    
+    try (Connection conn = dataSource.getConnection()) {
+        // Use the selected schema if provided
+        if (selectedSchema != null && !selectedSchema.isEmpty()) {
+            try (Statement useStmt = conn.createStatement()) {
+                useStmt.execute("USE " + selectedSchema);
+            }
         }
         
-        // Check if the query is safe to execute
-        if (query.toLowerCase().contains("drop") || query.toLowerCase().contains("delete") || query.toLowerCase().contains("update")) {
-            throw new IllegalArgumentException("Unsafe query detected");
-        }
-
-        // Validate the query to prevent SQL injection
-        if (!query.toLowerCase().startsWith("select")) {
-            throw new IllegalArgumentException("Only SELECT queries are allowed");
-        }
-        
-        try (Connection conn = dataSource.getConnection()) {
-            // Execute the custom query
+        if (isSelectQuery(query)) {
+            // For SELECT queries, return table data
             return executeQuery(conn, query);
-        } catch (SQLException e) {
-            logger.error("Error executing query for user {}: {}", username, query, e.getMessage());
-            throw new RuntimeException("Error executing query", e);
+        } else {
+            // For non-SELECT queries, execute and return affected rows
+            return executeUpdate(conn, query);
+        }
+    } catch (SQLException e) {
+        logger.error("Error executing query for user {}: {}", username, e.getMessage());
+        return new ErrorResponse("SQL Error: " + e.getMessage());
+    }
+}
+
+private boolean isSelectQuery(String query) {
+    String trimmedQuery = query.trim().toLowerCase();
+    return trimmedQuery.startsWith("select") || trimmedQuery.startsWith("show") || 
+           trimmedQuery.startsWith("describe") || trimmedQuery.startsWith("explain");
+}
+
+private UpdateResponse executeUpdate(Connection conn, String query) throws SQLException {
+    int rowsAffected = 0;
+    boolean hasResults = false;
+    
+    try (Statement stmt = conn.createStatement()) {
+        String[] queries = query.split(";");
+        
+        for (String singleQuery : queries) {
+            if (singleQuery.trim().isEmpty()) continue;
+            
+            boolean isResult = stmt.execute(singleQuery.trim());
+            if (isResult) {
+                hasResults = true;
+            } else {
+                rowsAffected += stmt.getUpdateCount();
+            }
         }
     }
+    
+    return new UpdateResponse("Query executed successfully", rowsAffected, hasResults);
+}
 
     @PostMapping("/createUser")
 @ResponseBody
@@ -477,6 +509,26 @@ public ResponseMessage dropTable(@RequestBody TableRequest tableRequest, Princip
         return new TableData(columns, rows);
         }
     
+    // Helper method to extract data from a ResultSet
+private TableData extractResultSetData(ResultSet rs) throws SQLException {
+    List<String> columns = new ArrayList<>();
+    List<List<Object>> rows = new ArrayList<>();
+    
+    int columnCount = rs.getMetaData().getColumnCount();
+    for (int i = 1; i <= columnCount; i++) {
+        columns.add(rs.getMetaData().getColumnName(i));
+    }
+    
+    while (rs.next()) {
+        List<Object> row = new ArrayList<>();
+        for (int i = 1; i <= columnCount; i++) {
+            row.add(rs.getObject(i));
+        }
+        rows.add(row);
+    }
+    
+    return new TableData(columns, rows);
+}
     
 
     public static class TableData {
@@ -500,13 +552,58 @@ public ResponseMessage dropTable(@RequestBody TableRequest tableRequest, Princip
 
     public static class QueryRequest {
         private String query;
+        private String selectedSchema;
         
         public String getQuery() {
-        return query;
+            return query;
+        }
+        
+        public void setQuery(String query) {
+            this.query = query;
+        }
+        
+        public String getSelectedSchema() {
+            return selectedSchema;
+        }
+        
+        public void setSelectedSchema(String selectedSchema) {
+            this.selectedSchema = selectedSchema;
+        }
     }
-
-    public void setQuery(String query) {
-        this.query = query;
+    
+    public static class ErrorResponse {
+        private String error;
+        
+        public ErrorResponse(String error) {
+            this.error = error;
+        }
+        
+        public String getError() {
+            return error;
+        }
+    }
+    
+    public static class UpdateResponse {
+        private String message;
+        private int rowsAffected;
+        private boolean hasResults;
+        
+        public UpdateResponse(String message, int rowsAffected, boolean hasResults) {
+            this.message = message;
+            this.rowsAffected = rowsAffected;
+            this.hasResults = hasResults;
+        }
+        
+        public String getMessage() {
+            return message;
+        }
+        
+        public int getRowsAffected() {
+            return rowsAffected;
+        }
+        
+        public boolean isHasResults() {
+            return hasResults;
         }
     }
     

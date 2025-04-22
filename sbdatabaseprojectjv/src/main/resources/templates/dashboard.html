@@ -74,6 +74,37 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Run Query Modal -->
+<div class="modal fade" id="runQueryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Run SQL Query</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="querySchemaSelect" class="form-label">Schema (Database)</label>
+                    <select class="form-select" id="querySchemaSelect">
+                        <option value="">-- Select a schema --</option>
+                        <!-- Will be populated dynamically -->
+                    </select>
+                    <div class="form-text">Optional: You can also specify schema in your query (e.g., mysql.user)</div>
+                </div>
+                <div class="mb-3">
+                    <label for="queryTextarea" class="form-label">SQL Query</label>
+                    <textarea class="form-control" id="queryTextarea" rows="6" placeholder="Enter your SQL query here..."></textarea>
+                </div>
+                <div id="queryError" class="alert alert-danger" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="executeQuery()">Execute</button>
+            </div>
+        </div>
+    </div>
+</div>
                             
                             <!-- Admin Only Operations -->
                             <div th:if="${isAdmin}" class="col-md-4 mb-4">
@@ -422,53 +453,186 @@
                 .catch(error => console.error('Error fetching table data:', error));
         }
 
-
+        // Updated runQuery function
         function runQuery() {
-            const query = prompt("Enter your SELECT query:");
-            if (query) {
-                fetch(`/runQuery`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ query })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Query Data:', data);
-                    const resultsTable = document.getElementById('resultsTable');
-                    const thead = resultsTable.querySelector('thead');
-                    const tbody = resultsTable.querySelector('tbody');
-                    thead.innerHTML = '';
-                    tbody.innerHTML = '';
-                    // Create table headers
-                    const headerRow = document.createElement('tr');
-                    data.columns.forEach(column => {
-                        const th = document.createElement('th');
-                        th.textContent = column;
-                        headerRow.appendChild(th);
-                    });
-                    thead.appendChild(headerRow);
-                    // Create table rows
-                    data.rows.forEach(row => {
-                        const tr = document.createElement('tr');
-                        row.forEach(cellData => {
-                            const td = document.createElement('td');
-                            td.textContent = cellData;
-                            tr.appendChild(td);
-                        });
-                        tbody.appendChild(tr);
-                    });
-                    document.getElementById('queryResults').style.display = 'block';
-                })
-                .catch(error => console.error('Error running query:', error));
-            }
+    // Create modal for query input
+    const modalHtml = `
+        <div class="modal fade" id="queryModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Run SQL Query</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="querySchema" class="form-label">Database Schema</label>
+                            <select class="form-select" id="querySchema">
+                                <option value="">-- Select a schema --</option>
+                                ${Array.from(document.getElementById('databaseSelect').options)
+                                    .filter(opt => opt.value)
+                                    .map(opt => `<option value="${opt.value}">${opt.text}</option>`)
+                                    .join('')}
+                            </select>
+                            <div class="form-text">
+                                You can also specify the schema in your query (e.g., "USE schema_name" or "SELECT * FROM schema_name.table_name")
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="queryInput" class="form-label">SQL Query</label>
+                            <textarea class="form-control" id="queryInput" rows="10" placeholder="Enter your SQL query here..."></textarea>
+                            <div class="form-text">
+                                You can run multiple statements separated by semicolons (;)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="executeQueryBtn">Execute</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Append modal to body if it doesn't exist
+    if (!document.getElementById('queryModal')) {
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHtml;
+        document.body.appendChild(modalContainer);
+        
+        // Add event listener for the execute button
+        document.getElementById('executeQueryBtn').addEventListener('click', executeQuery);
+    }
+
+    // Set initial schema value from the main dropdown if selected
+    const mainSchemaSelect = document.getElementById('databaseSelect');
+    if (mainSchemaSelect.value) {
+        setTimeout(() => {
+            document.getElementById('querySchema').value = mainSchemaSelect.value;
+        }, 100);
+    }
+
+    // Show the modal
+    const queryModal = new bootstrap.Modal(document.getElementById('queryModal'));
+    queryModal.show();
+}
+
+function executeQuery() {
+    const query = document.getElementById('queryInput').value.trim();
+    const selectedSchema = document.getElementById('querySchema').value;
+    
+    if (!query) {
+        alert('Please enter a query');
+        return;
+    }
+    
+    fetch('/runQuery', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query, selectedSchema })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
         }
+        return response.json();
+    })
+    .then(data => {
+        // Close the modal
+        const queryModal = bootstrap.Modal.getInstance(document.getElementById('queryModal'));
+        queryModal.hide();
+        
+        // Show results
+        displayQueryResults(data);
+    })
+    .catch(error => {
+        console.error('Error executing query:', error);
+        alert('Error executing query. Check console for details.');
+    });
+}
+
+function displayQueryResults(data) {
+    const resultsSection = document.getElementById('queryResults');
+    const resultsTable = document.getElementById('resultsTable');
+    const thead = resultsTable.querySelector('thead');
+    const tbody = resultsTable.querySelector('tbody');
+    
+    // Clear previous results
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+    
+    // Check if there's an error
+    if (data.error) {
+        // Display error message
+        thead.innerHTML = '<tr><th class="text-danger">Error</th></tr>';
+        tbody.innerHTML = `<tr><td class="text-danger">${data.error}</td></tr>`;
+        resultsSection.style.display = 'block';
+        return;
+    }
+    
+    // Check if it's an update response (non-SELECT query)
+    if (data.message !== undefined) {
+        // Display update message
+        thead.innerHTML = '<tr><th>Result</th></tr>';
+        
+        let messageContent = `<strong>${data.message}</strong>`;
+        if (data.rowsAffected !== undefined) {
+            messageContent += `<br>Rows affected: ${data.rowsAffected}`;
+        }
+        
+        tbody.innerHTML = `<tr><td>${messageContent}</td></tr>`;
+        resultsSection.style.display = 'block';
+        return;
+    }
+    
+    // It's a regular query result with data
+    if (data.columns && data.rows) {
+        // Create table headers
+        const headerRow = document.createElement('tr');
+        data.columns.forEach(column => {
+            const th = document.createElement('th');
+            th.textContent = column;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        
+        // Create table rows
+        if (data.rows.length === 0) {
+            // No results case
+            const emptyRow = document.createElement('tr');
+            const emptyCell = document.createElement('td');
+            emptyCell.colSpan = data.columns.length;
+            emptyCell.textContent = 'No results found';
+            emptyCell.className = 'text-center text-muted';
+            emptyRow.appendChild(emptyCell);
+            tbody.appendChild(emptyRow);
+        } else {
+            // Results case
+            data.rows.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cellData => {
+                    const td = document.createElement('td');
+                    td.textContent = cellData !== null ? cellData : 'NULL';
+                    if (cellData === null) {
+                        td.className = 'text-muted fst-italic';
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+    } else {
+        // Fallback for unexpected response format
+        thead.innerHTML = '<tr><th>Result</th></tr>';
+        tbody.innerHTML = '<tr><td>Query executed but returned an unexpected format</td></tr>';
+    }
+    
+    resultsSection.style.display = 'block';
+}
+
 // Function to load user management modal
 function manageUsers() {
     // Load the user list
